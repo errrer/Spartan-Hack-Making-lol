@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!--
+PROJECT RULES (kept here so every future session starts from them)
+ Look & feel     3D models must be detailed and professional, animations everywhere, plenty of juice. Never ship placeholder-looking models.
+ Files           the whole project stays under 20 files (index.html, style.css, favicon.svg, README.md and the scripts in js/). Add to existing files before adding new ones.
+ Delivery        the finished game is delivered as a .zip. The README does not need updating.
+ Weapons         every weapon added must also exist in Zombies (wall buy + Mystery Box), unless it is a map's own unique weapon (London's The Brew). Zombies-only weapons never appear in Multiplayer.
+                 There is ONE model per weapon, used in first person, in the loadout, on bots/other players and on the chalk wall buys. Bots can use every Multiplayer weapon.
+                 Reload sounds are real mechanical sounds (noise + material resonances, scrapes, thuds), unique per gun, never pitched tones or sweeps. RayGun: one shared projectile and one shared red ooze explosion (rgImpact) for the player, bots and remote players.
+ Performance     must be heavily optimised: no frame cap, 60 fps minimum on every device at Ultra (the governor LX.gov trades resolution first, effects second). Never add per-frame DOM rebuilds.
+ Zombies         wall buys are chalk outlines; at most two zombies throw guts at a time; each gun has its own reload sounds; ONE Mystery Box per map at a random spot that moves after use;
+                 the spawn room always has Revive Soda (self-revive, and it revives teammates twice as fast); Hollow Estate has Nitrogen Fists, London has the power switch and the tea easter egg, never Nitrogen Fists.
+ Multiplayer maps keep their OWN layouts and character: never replace a map with a shared template. They follow the Call of Duty design rules through per-map tuning (mapTune / MAPTUNE in extras.js):
+                 loose clutter thinned, paired cover at every objective, a spawn shield in front of each base, and a measured check that no base sees most of the map.
+ Controllers     every menu is fully reachable and every button pressable; on-screen prompts follow the controller (Xbox, PlayStation, Nintendo, Ouya) through PG in controls.js. Dual wield: LT left gun, RT right gun.
+ Camos           no sparkle squares or glowing blocks on any camo, including Pack-a-Punch.
+ Anti-cheat      streaks.js loads last and snapshots the weapon table and the functions listed in names_. New weapons must be added to W before streaks.js runs; never wrap those functions afterwards.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Spartan Drill</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600&family=Teko:wght@500;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="stylesheet" href="style.css"></head><body>
+<div id="menu">
+ <header id="brand"><h1>SPARTAN <b>DRILL</b></h1><p>Arena combat simulator</p></header>
+ <nav id="nav"><button data-p="play" class="mp">Play</button><button data-p="priv" class="mp">Private match</button><button data-p="load" class="mp">Loadout</button><button data-p="zplay" class="zm">Play</button><button data-p="priv" class="zm">Co-op lobby</button><button data-p="cust" class="zm">Camos</button><button data-p="set">Settings</button><button id="back">‹ Back</button></nav>
+ <div id="prof"><input id="nm" type="text" maxlength="12" placeholder="Your name"><p id="rank"></p><div id="xpb"><div id="xpf"></div></div><button id="prest" class="btn sm" style="display:none"></button></div>
+ <main>
+  <section id="p-play" class="pn"><h2>Game mode</h2><div class="row" id="md"></div><h2>Map</h2><div class="row" id="mp"></div><button id="go" class="big">Deploy</button></section>
+  <section id="p-priv" class="pn"><h2>Private match</h2><p class="sub">Play with friends directly, peer to peer. Host creates a code, friends type it in. Pick any game mode: bots and rules run on the host. Uses your current loadout.</p>
+   
+   <div class="two"><div class="card2"><h3>Host</h3><label id="pmodeL">Game mode<select id="pmode"></select></label><label id="pmL">Map<select id="pm"></select></label><label id="pbL">Bots in the match: <b id="pbv">6</b><input id="pbots" type="range" min="0" max="12" step="1" value="6"></label><button id="host" class="big">Create match</button>
+    <div id="hostbox" style="display:none"><div id="code"></div><button id="startnet" class="big">Start match</button></div></div>
+   <div class="card2"><h3>Join</h3><label>Match code<input id="jc" type="text" maxlength="5" placeholder="ABCDE"></label><button id="join" class="big">Join match</button></div></div>
+   <p id="lb"></p><ul id="plist"></ul><button id="leave" class="big alt" style="display:none">Leave lobby</button></section>
+  <section id="p-load" class="pn"><h2>Loadout <span id="pts"></span></h2><div id="ld"></div></section>
+  <section id="p-mast" class="pn"><h2>Weapon mastery and camos</h2><p class="sub">Kills in Multiplayer level your weapons and unlock these camos. Zombie camos can be equipped here too.</p><div id="wm"></div></section>
+  <section id="p-zplay" class="pn"><h2>Zombies</h2><p class="sub">Survive endless rounds of the undead on one of two maps: the Hollow Estate, an abandoned mansion with a front lawn, a back garden and a crypt, or Westminster, London, where Big Ben watches over the Palace Yard and the power is off until you find the switch. Play solo or with up to 3 friends in a co-op lobby. You always start the same way: a 1911 with 500 points, your bare fists, 2 frags and 2 flashbangs. Your Multiplayer loadout does not carry over. Zombies get stronger every round and a pack of brutes arrives every fifth round.</p>
+   <div class="how"><span>10 points per hit</span><span>50 per body kill</span><span>100 per headshot kill</span><span>130 per melee kill</span><span><kbd>F</kbd> buy / interact</span><span><kbd>V</kbd> tap: quick melee strike, hold: draw your melee weapon</span></div>
+   <ul class="zl"><li>Doors (750 to 2500) open new rooms of the mansion</li><li>Wall weapons: buy guns straight off the wall (600 to 4500). Buy the same gun again for half price to refill its ammo</li><li>Ammo crates: refill the weapon you are holding for 500, or 2000 once Pack-a-Punched, or 4000 after the second upgrade. Ammo is never restored for free between rounds</li><li>Mystery Box (950): a random weapon. There is only ever one box on the map: it starts in a random spot and, after a few uses, moves to another. The RayGun is rare and one-shots almost everything. On the Hollow Estate the Nitrogen Fists are rare too and replace your melee slot, and while they are drawn (hold <kbd>V</kbd>) the aim button is a rocket DASH that smashes through zombies (short cooldown)</li><li>Pack-a-Punch (in the crypt): 5000 to upgrade your weapon, 10000 to upgrade it again. Draw your melee first (hold <kbd>V</kbd>) to upgrade your fists instead. Upgraded weapons come out with a camo that exists only in this map</li><li>Power-ups drop from zombies: Max Ammo, Insta-Kill, Double Points, Nuke, Fire Sale and Full Restore. Run into them to pick them up before they fade</li><li>Soda machines: red health, green fast reload, yellow double damage and fire rate, blue self-revive (the machine runs dry after 4 buys), purple run speed and shooting while sprinting, orange third weapon</li><li>Do not camp on furniture: zombies that cannot reach you will hurl their guts at you instead</li></ul>
+   <p id="zbest" class="sub"></p><h2>Choose your map</h2><div id="zmaps"></div></section>
+  <section id="p-cust" class="pn"></section>
+  <section id="p-ks" class="pn"></section>
+  <section id="p-zcam" class="pn"><h2>Zombie camos</h2><p class="sub">Earn zombie kills with each weapon to unlock these. The last three are animated. Every camo, from this list or from Multiplayer, works in both modes.</p><div id="zwm"></div></section>
+ <section id="p-set" class="pn"><h2>Settings</h2>
+   <label>Aim assist<select id="aa"><option value="0">Off</option><option value="0.6">Light</option><option value="1">Strong</option><option value="1.5" selected>Very strong</option></select></label>
+   <label>Look sensitivity<input id="sn" type="range" min="0.3" max="2.5" step="0.1" value="1.4"></label>
+   <label>Field of view<input id="fv" type="range" min="60" max="110" step="1" value="80"></label>
+   <label>Brightness<input id="br" type="range" min="0.6" max="1.6" step="0.05" value="1"></label>
+   <label id="vrL" style="display:none">VR headset mode<select id="vrm"><option value="0">Off</option><option value="1">On (enter VR when a match starts)</option></select></label>
+   <label>Controller prompts<select id="pgs"><option value="auto">Auto-detect</option><option value="xbox">Xbox</option><option value="ps">PlayStation</option><option value="ns">Nintendo</option><option value="ouya">Ouya</option></select></label>
+   <label>Graphics<select id="gq"><option value="high">Ultra (HDR lighting, bloom, sun shafts)</option><option value="med">Medium (PBR materials + shadows)</option><option value="low">Low (fastest, original look)</option></select></label>
+   <h2>Keyboard and mouse</h2><div class="how"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span><span><kbd>Space</kbd> jump / stand / mantle</span><span><kbd>Shift</kbd> sprint (double press: tactical sprint)</span><span><kbd>C</kbd> crouch / slide</span><span><kbd>Ctrl</kbd> prone / dive</span><span><kbd>Alt</kbd> walk</span><span><kbd>H</kbd> auto run</span><span><kbd>LMB</kbd> fire</span><span><kbd>RMB</kbd> aim down sights (with the Nitrogen Fists drawn: dash)</span><span><kbd>R</kbd> reload</span><span><kbd>V</kbd> / <kbd>Mouse 4</kbd> katana</span><span><kbd>E</kbd> lethal (frag)</span><span><kbd>Q</kbd> tactical (flashbang)</span><span><kbd>F</kbd> interact / buy / revive</span><span><kbd>T</kbd> / <kbd>Mouse 5</kbd> weapon mount (while aiming)</span><span><kbd>B</kbd> fire mode</span><span><kbd>Y</kbd> inspect weapon</span><span><kbd>X</kbd> field upgrade</span><span><kbd>1</kbd> / wheel down next weapon</span><span><kbd>2</kbd> / wheel up previous weapon</span><span><kbd>3</kbd><kbd>4</kbd><kbd>5</kbd><kbd>6</kbd> killstreak slots</span><span><kbd>Tab</kbd> scoreboard</span><span><kbd>M</kbd> / <kbd>Caps</kbd> map</span><span><kbd>MMB</kbd> ping</span><span><kbd>N</kbd> night vision</span><span><kbd>Esc</kbd> / <kbd>F1</kbd> / <kbd>F3</kbd> / <kbd>F6</kbd> menu</span></div>
+   <h2>Controller</h2><div class="how"><span>LS move</span><span>RS look</span><span>LS click: hold to sprint (click twice: tactical sprint, or steady aim while aiming)</span><span>RS click katana (LT + RS click: weapon mount)</span><span>LT aim (with the Nitrogen Fists drawn: dash)</span><span>RT fire</span><span>LB tactical</span><span>RB lethal</span><span>LB + RB field upgrade</span><span>A jump / stand / mantle</span><span>B crouch / slide, hold: prone / dive</span><span>X reload, hold: interact</span><span>Y swap weapon</span><span>D-pad up ping</span><span>D-pad down inventory, hold: night vision</span><span>D-pad left fire mode</span><span>D-pad right killstreak</span><span>View: map, hold: scoreboard</span><span>Menu: pause</span><span>Menus: D-pad / stick + A, B back, on-screen keyboard for names and codes</span></div>
+   <h2>VR (Quest and other WebXR headsets)</h2><div class="how"><span>Right controller aims and holds the weapon</span><span>Right trigger fire</span><span>Left trigger lethal</span><span>Left grip tactical</span><span>Both grips field upgrade</span><span>Right grip reload, hold: interact</span><span>A jump</span><span>B swap</span><span>X crouch / slide, hold: prone / dive</span><span>Y pause menu</span><span>Left stick move</span><span>Left stick click: hold to sprint (click twice: tactical)</span><span>Right stick click katana</span><span>Right stick left/right snap turn, up ping, down fire mode</span></div><p class="sub">In VR the menus appear on a panel in front of you: point with the right controller, pull the trigger to press (grip changes a drop-down backwards, right stick scrolls). Health, ammo and score are on your left wrist.</p>
+   <p class="sub">Touch screens: drag on the left to look, tap or hold on the right to shoot, use the stick for movement (push it to the edge to sprint) and the buttons for jump, reload, grenade, melee, swap and killstreak.</p><p class="sub">No aim button: shots go where your crosshair points, and aim assist helps when an enemy is near it.</p></section>
+ </main>
+ <div id="hot"></div>
+ <div id="dev"><div class="card"><h2>Developer menu</h2><button class="big" data-d="all">Unlock everything</button><button class="big" data-d="lvl">Max level 55</button><button class="big" data-d="master">Prestige Master 1250</button><button class="big alt" data-d="reset">Reset all progress</button><button class="big alt" data-d="close">Close</button></div></div>
+</div>
+<div id="home"><header><h1>SPARTAN <b>DRILL</b></h1><p>Choose your battlefield</p></header>
+ <div id="hbtns"><button id="hz" class="hb"><b>Zombies</b><span>Survive the undead. Doors, perks, the mystery box and Pack-a-Punch.</span><i id="hzs"></i></button>
+ <button id="hmp" class="hb"><b>Multiplayer</b><span>Arena modes, bot matches and private lobbies.</span><i id="hms"></i></button></div></div>
+<div id="pause"><div class="card"><h2 id="pt">Paused</h2><button id="resume" class="big">Resume</button>
+ <label>Aim assist<select id="aa2"><option value="0">Off</option><option value="0.6">Light</option><option value="1">Strong</option><option value="1.5">Very strong</option></select></label>
+ <label>Look sensitivity<input id="sn2" type="range" min="0.3" max="2.5" step="0.1"></label>
+ <label>Field of view<input id="fv2" type="range" min="60" max="110" step="1"></label>
+ <label>Brightness<input id="br2" type="range" min="0.6" max="1.6" step="0.05"></label>
+ <label>Volume<input id="vl" type="range" min="0" max="1" step="0.05" value="1"></label>
+ <label>Screen shake<input id="sk" type="range" min="0" max="1" step="0.1" value="1"></label>
+ <button id="exit" class="big alt">Exit match</button></div></div>
+<div id="end"><div class="card"><div id="et"></div><br><button class="big" id="again">Play again</button><button class="big alt" id="tomenu">Main menu</button></div></div>
+<div id="fin"><div id="fbl"></div>
+ <div id="fvt"><b></b><span></span></div>
+ <section id="fbd"></section>
+ <div id="fpod"><p id="fcd"></p><div id="fnm"></div><div id="fem"><button data-e="0"><kbd>1</kbd>Wave</button><button data-e="1"><kbd>2</kbd>Cheer</button><button data-e="2"><kbd>3</kbd>Dance</button><button data-e="3"><kbd>4</kbd>Flex</button></div></div>
+ <div id="ffd"></div></div>
+<div id="rcv"></div><div id="zgore"></div><div id="osk"></div><div id="scope"></div><div id="flash"></div><div id="nvo"></div><div id="sbd"></div><div id="mapv"><canvas id="mapc" width="640" height="640"></canvas><p>M to close</p></div>
+<div id="hud"><div id="dm"></div><div id="di"></div><canvas id="rd" width="150" height="150"></canvas><div id="kf"></div><div id="ks"></div><div id="pops"></div><div id="kst"></div><div id="ob"></div><div id="ms"></div><div id="cx"></div><div id="hm"></div>
+<div id="zh"><div id="zr"></div><div id="zpt"></div><div id="zpk"></div><div id="zt"></div></div><div id="zp"></div>
+<div id="bars"><span id="hn">Shield</span><div class="bar"><div id="sh"></div></div><div class="bar"><div id="hp"></div></div></div>
+<div id="hint">WASD move · Shift sprint · Mouse look · LMB fire · RMB aim · V katana · R reload · E frag · Q flash · F use · C crouch · Ctrl prone · 3 kills = UAV (3)</div><div id="am"></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<script src="js/lumen.js"></script>
+<script src="js/core.js"></script>
+<script src="js/maps.js"></script>
+<script src="js/systems.js"></script>
+<script src="js/graphics.js"></script>
+<script src="js/interface.js"></script>
+<script src="js/controls.js"></script>
+<script src="js/menus.js"></script>
+<script src="js/zombies.js"></script>
+<script src="js/estate.js"></script>
+<script src="js/juice.js"></script>
+<script src="js/extras.js"></script>
+<script src="js/london.js"></script>
+<script src="js/streaks.js"></script>
+</body></html>
